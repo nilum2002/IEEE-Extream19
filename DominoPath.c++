@@ -1,70 +1,53 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-int find(vector<int>& parent, int i) {
-    if (parent[i] != i) parent[i] = find(parent, parent[i]);
-    return parent[i];
+int find(vector<int> &p, int x) {
+    if (p[x] == x) return x;
+    return p[x] = find(p, p[x]);
 }
 
-void unite(vector<int>& parent, vector<int>& rank, int x, int y) {
-    int xroot = find(parent, x);
-    int yroot = find(parent, y);
-    if (xroot == yroot) return;
-    if (rank[xroot] < rank[yroot]) parent[xroot] = yroot;
-    else if (rank[xroot] > rank[yroot]) parent[yroot] = xroot;
-    else {
-        parent[yroot] = xroot;
-        rank[xroot]++;
-    }
+void union_sets(vector<int> &p, int x, int y) {
+    x = find(p, x);
+    y = find(p, y);
+    if (x != y) p[x] = y;
 }
 
 int main() {
     ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-
+    cin.tie(NULL);
     int T;
     cin >> T;
-    for (int t = 0; t < T; ++t) {
+    for (int t = 0; t < T; t++) {
         int M;
         cin >> M;
-        vector<pair<int, int>> d(M);
-        for (int i = 0; i < M; ++i) {
-            cin >> d[i].first >> d[i].second;
+        vector<pair<int, int>> domino(M);
+        for (int i = 0; i < M; i++) {
+            int x, y;
+            cin >> x >> y;
+            domino[i] = {x, y};
         }
-        int ans = 0;
-        for (int mask = 1; mask < (1 << M); ++mask) {
-            vector<int> degree(8, 0);
-            vector<int> parent(8);
-            vector<int> rank(8, 0);
-            set<int> used;
-            for (int i = 1; i <= 7; ++i) parent[i] = i;
-            for (int i = 0; i < M; ++i) {
-                if (mask & (1 << i)) {
-                    int x = d[i].first, y = d[i].second;
-                    degree[x]++;
-                    degree[y]++;
-                    used.insert(x);
-                    used.insert(y);
-                    unite(parent, rank, x, y);
-                }
+        long long ans = 0;
+        int NN = 1 << M;
+        for (int mask = 1; mask < NN; mask++) {
+            vector<int> deg(8, 0);
+            vector<int> p(8);
+            for (int i = 1; i <= 7; i++) p[i] = i;
+            int used = 0;
+            for (int b = 0; b < M; b++) if (mask & (1 << b)) {
+                int x = domino[b].first, y = domino[b].second;
+                deg[x]++;
+                deg[y]++;
+                union_sets(p, x, y);
+                used |= (1 << (x - 1)) | (1 << (y - 1));
             }
             int odd = 0;
-            for (int i = 1; i <= 7; ++i) {
-                if (degree[i] % 2 == 1) odd++;
-            }
-            if (odd > 2) continue;
-            if (used.empty()) continue;
-            int root = find(parent, *used.begin());
-            bool conn = true;
-            for (int v : used) {
-                if (find(parent, v) != root) {
-                    conn = false;
-                    break;
-                }
-            }
-            if (conn) ans++;
+            for (int i = 0; i < 7; i++) if (used & (1 << i)) if (deg[i + 1] % 2) odd++;
+            if (odd != 0 && odd != 2) continue;
+            int comp = 0;
+            for (int i = 0; i < 7; i++) if (used & (1 << i)) if (find(p, i + 1) == i + 1) comp++;
+            if (comp == 1) ans++;
         }
-        cout << ans << endl;
+        cout << ans << '\n';
     }
     return 0;
 }
