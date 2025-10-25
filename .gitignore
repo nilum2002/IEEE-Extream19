@@ -1,0 +1,6 @@
+
+# Ignore Windows executables
+*.exe
+
+# Previously ignored specific executable (now covered by the rule above)
+ShaileshTriplet.exe
