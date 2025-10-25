@@ -1,103 +1,127 @@
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-
+#include <bits/stdc++.h>
 using namespace std;
 
-// Function to get prime factorization
-pair<long long, long long> getSemiprimeFactors(long long n) {
-    long long original = n;
-    long long first = -1;
-    
-    // Check for factor 2
-    if (n % 2 == 0) {
-        first = 2;
-        n /= 2;
-        if (n == 2) return {2, 2}; // 4 = 2*2
-        if (n % 2 == 0) return {-1, -1}; // More than 2 factors of 2
-        if (n > 1) {
-            // Check if remaining is prime
-            bool isPrime = true;
-            for (long long i = 3; i * i <= n; i += 2) {
-                if (n % i == 0) {
-                    isPrime = false;
-                    break;
-                }
-            }
-            if (isPrime) return {2, n};
-        }
-        return {-1, -1};
-    }
-    
-    // Check for odd factors
-    for (long long i = 3; i * i <= n; i += 2) {
-        if (n % i == 0) {
-            first = i;
-            n /= i;
-            if (n == i) return {i, i}; // Perfect square of prime
-            if (n % i == 0) return {-1, -1}; // More than 2 factors
-            
-            // Check if remaining is prime
-            bool isPrime = true;
-            for (long long j = 3; j * j <= n; j += 2) {
-                if (n % j == 0) {
-                    isPrime = false;
-                    break;
-                }
-            }
-            if (isPrime) return {i, n};
-            return {-1, -1};
-        }
-    }
-    
-    return {-1, -1}; // n is prime itself, not a semiprime
-}
+using ll = long long;
 
 int main() {
-    ios_base::sync_with_stdio(false);
-    cin.tie(NULL);
-    
-    int t;
-    cin >> t;
-    
-    while (t--) {
-        long long l, r;
-        cin >> l >> r;
-        
-        // Map: prime -> count of semiprimes containing this prime
-        unordered_map<long long, long long> primeCount;
-        vector<pair<long long, long long>> semiprimes;
-        
-        for (long long i = l; i <= r; i++) {
-            auto [p1, p2] = getSemiprimeFactors(i);
-            if (p1 != -1) {
-                semiprimes.push_back({p1, p2});
-                primeCount[p1]++;
-                if (p2 != p1) {
-                    primeCount[p2]++;
-                }
-            }
-        }
-        
-        long long count = 0;
-        
-        // For each prime, count pairs
-        for (auto& [prime, cnt] : primeCount) {
-            count += cnt * (cnt - 1) / 2;
-        }
-        
-        // Subtract overcounted pairs (those that share BOTH primes)
-        for (int i = 0; i < semiprimes.size(); i++) {
-            for (int j = i + 1; j < semiprimes.size(); j++) {
-                if (semiprimes[i].first == semiprimes[j].first && 
-                    semiprimes[i].second == semiprimes[j].second) {
-                    count--;
-                }
-            }
-        }
-        
-        cout << count << endl;
+  ios::sync_with_stdio(false);
+  cin.tie(nullptr);
+
+  const int N = 1000000;
+  vector<int> spf(N + 1);
+  for (int i = 0; i <= N; ++i) spf[i] = i;
+  for (int i = 2; i * i <= N; ++i) {
+    if (spf[i] == i) {
+      for (int j = i * i; j <= N; j += i) {
+        if (spf[j] == j) spf[j] = i;
+      }
     }
-    
-    return 0;
+  }
+
+  vector<char> is_prime(N + 1, 1);
+  is_prime[0] = is_prime[1] = 0;
+  for (int i = 2; i <= N; ++i) {
+    if (spf[i] == i) is_prime[i] = 1;
+    else is_prime[i] = 0;
+  }
+
+  vector<int> primes;
+  for (int i = 2; i <= N; ++i) {
+    if (is_prime[i]) primes.push_back(i);
+  }
+
+  unordered_map<int, int> pidx;
+  for (size_t i = 0; i < primes.size(); ++i) {
+    pidx[primes[i]] = i;
+  }
+
+  vector<vector<int>> belongs(N + 1);
+  for (int k = 2; k <= N; ++k) {
+    set<int> distinct_pf;
+    int temp = k;
+    while (temp > 1) {
+      int p = spf[temp];
+      distinct_pf.insert(p);
+      temp /= p;
+    }
+    for (int p : distinct_pf) {
+      ll other = (ll)k / p;
+      if (other > 1 && is_prime[other]) {
+        auto it = pidx.find(p);
+        if (it != pidx.end()) {
+          belongs[k].push_back(it->second);
+        }
+      }
+    }
+  }
+
+  int T;
+  cin >> T;
+
+  struct Query {
+    int l, r, idx;
+  };
+  vector<Query> queries;
+  for (int i = 0; i < T; ++i) {
+    int L, R;
+    cin >> L >> R;
+    queries.push_back({L, R, i});
+  }
+
+  int QQ = T;
+  int block_size = max(1, (int)(N / sqrt(QQ)));
+  sort(queries.begin(), queries.end(), [block_size](const Query& a, const Query& b) {
+    int ba = a.l / block_size;
+    int bb = b.l / block_size;
+    if (ba != bb) return ba < bb;
+    return a.r < b.r;
+  });
+
+  vector<ll> answers(T);
+  ll cur_ans = 0;
+  int cur_l = 1, cur_r = 0;
+  vector<int> cnt(primes.size(), 0);
+
+  auto add = [&](int pos) {
+    for (int gid : belongs[pos]) {
+      int old = cnt[gid];
+      cnt[gid]++;
+      cur_ans += old;
+    }
+  };
+
+  auto rem = [&](int pos) {
+    for (int gid : belongs[pos]) {
+      int old = cnt[gid];
+      cnt[gid]--;
+      cur_ans -= (old - 1);
+    }
+  };
+
+  for (auto& q : queries) {
+    int tl = q.l, tr = q.r;
+    while (cur_r < tr) {
+      ++cur_r;
+      add(cur_r);
+    }
+    while (cur_l > tl) {
+      --cur_l;
+      add(cur_l);
+    }
+    while (cur_r > tr) {
+      rem(cur_r);
+      --cur_r;
+    }
+    while (cur_l < tl) {
+      rem(cur_l);
+      ++cur_l;
+    }
+    answers[q.idx] = cur_ans;
+  }
+
+  for (int i = 0; i < T; ++i) {
+    cout << answers[i] << '\n';
+  }
+
+  return 0;
 }
