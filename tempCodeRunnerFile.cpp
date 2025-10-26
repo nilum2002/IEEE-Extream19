@@ -1,0 +1,3 @@
+
+
+    vector<int> s(N);
